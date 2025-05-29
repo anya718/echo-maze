@@ -13,33 +13,49 @@
 
 #define OLED_RESET     -1
 #define SCREEN_ADDRESS 0x3C
-Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
+Adafruit_SSD1306 oled_display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 
 
-#define BUZZ PD6
-#define BTN_U PB4
-#define BTN_D PB1
-#define BTN_L PB3
-#define BTN_R PB2
-#define LED_BLTIN PB5
+#define BUZZ        PD6
+#define LED_BLTIN   PB5
+#define BTN_R       PB4
+#define BTN_U       PB3
+#define BTN_L       PB2
+#define BTN_D       PB1
 
-#define ROWS 10 // TODO: add more mazes and choose randomly
+#define DEBOUNCE    150
+#define NEXT_LVL    300
+
+#define ROWS 10 // TODO: add more mazes and choose difficulty
 #define COLS 9
 const int finish_row = 9;
 const int finish_col = 3;
-int player_row = 1;
-int player_col = 3;
+const int start_row = 1;
+const int start_col = 3;
+int player_row;
+int player_col;
+int dist_range = 11;
 
-char maze[ROWS][COLS] = { // TODO: decide which matrix type is best
-    {'0','0','0','0','0','0','0','0','0'},
-    {'0','5',' ','6',' ','7',' ','8','0'},
-    {'0',' ','0','0','0','0','0',' ','0'},
-    {'0','4','0','9',' ','9',' ','9','0'},
-    {'0',' ','0','0','0','0','0','0','0'},
-    {'0','3',' ','2','0','3',' ','4','0'},
-    {'0',' ','0',' ','0',' ','0',' ','0'},
-    {'0','4','0','1',' ','2','0','5','0'},
-    {'0','0','0',' ','0','0','0','0','0'}
+int difficulty = 0;
+const char* difficulties[6] = {
+    "      Very easy", 
+    "         Easy", 
+    "        Medium", 
+    "         Hard", 
+    "      Very Hard", 
+    "       Extreme"
+};
+
+int8_t maze[ROWS][COLS] = {
+    {-1, -1, -1, -1, -1, -1, -1, -1, -1},
+    {-1,  5,  0,  6,  0,  7,  0,  8, -1},
+    {-1,  0, -1, -1, -1, -1, -1,  0, -1},
+    {-1,  4, -1, 11,  0, 10,  0,  9, -1},
+    {-1,  0, -1, -1, -1, -1, -1, -1, -1},
+    {-1,  3,  0,  2, -1,  3,  0,  4, -1},
+    {-1,  0, -1,  0, -1,  0, -1,  0, -1},
+    {-1,  4, -1,  1,  0,  2, -1,  5, -1},
+    {-1, -1, -1,  0, -1, -1, -1, -1, -1}
 };
 
 static void GPIO_init() {
@@ -64,24 +80,28 @@ static void GPIO_init() {
 }
 
 static void display_init() {
-    if(!display.begin(SSD1306_SWITCHCAPVCC, SCREEN_ADDRESS)) {
+    if(!oled_display.begin(SSD1306_SWITCHCAPVCC, SCREEN_ADDRESS)) {
         Serial.println(F("SSD1306 allocation failed"));
         for(;;); // Don't proceed, loop forever
     }
 }
 
 void display_text(char *text) {
-    display.clearDisplay();
-    display.setTextSize(1);
-    display.setTextColor(SSD1306_WHITE);
-    display.setCursor(0, 0);
-    display.println(text);
-    display.display();
+    oled_display.clearDisplay();
+    oled_display.setTextSize(1);
+    oled_display.setTextColor(SSD1306_WHITE);
+    oled_display.setCursor(0, 0);
+    oled_display.println(text);
+    oled_display.display();
     delay(100);
 }
 
 bool button_pressed(int button) {
     return bit_is_clear(PINB, button);
+}
+
+bool any_button_pressed() {
+    return button_pressed(BTN_U) || button_pressed(BTN_D) || button_pressed(BTN_L) || button_pressed(BTN_R);
 }
 
 void led_on(int led) {
@@ -97,7 +117,7 @@ bool is_finished() {
 }
 
 int tone_freq() {
-    return (10 - (maze[player_row][player_col] - '0')) * 100;
+    return 100 + (dist_range - maze[player_row][player_col]) * (900 / (dist_range - 1));
 }
 
 void display_movement() {
@@ -113,40 +133,83 @@ void display_wall() {
 }
 
 bool wall_up() {
-    return maze[player_row - 1][player_col] == '0'; // TODO: make movement file
+    return maze[player_row - 1][player_col] == -1; // TODO: make movement file
 }
 
 bool wall_down() {
-    return maze[player_row + 1][player_col] == '0';
+    return maze[player_row + 1][player_col] == -1;
 }
 
 bool wall_left() {
-    return maze[player_row][player_col - 1] == '0';
+    return maze[player_row][player_col - 1] == -1;
 }
 
 bool wall_right() {
-    return maze[player_row][player_col + 1] == '0';
+    return maze[player_row][player_col + 1] == -1;
 }
 
-void start() {
+void display_start() {
     display_text("     Start game!\n\n   <move to begin>");
+    _delay_ms(DEBOUNCE);
+    while (1) {
+        if (any_button_pressed()) {
+            _delay_ms(DEBOUNCE);
+            break;
+        }
+    }
+}
+
+void choose_difficulty() {
+    while (1) {
+        char text[100];
+        sprintf(text, "  Choose difficulty:\n\n%s", difficulties[difficulty]);
+        display_text(text);
+
+        if (button_pressed(BTN_L)) {
+            if (difficulty)
+                difficulty--;
+            _delay_ms(DEBOUNCE);
+        }
+
+        if (button_pressed(BTN_R)) {
+            if (difficulty != 5)
+                difficulty++;
+            _delay_ms(DEBOUNCE); // WHERE?
+        }
+        
+        if (button_pressed(BTN_U) || button_pressed(BTN_D))
+            break;
+    }
+    char text[100];
+    sprintf(text, "You enter the maze!\nDifficulty:\n%s", difficulties[difficulty]);
+    display_text(text);
+    _delay_ms(200);
 }
 
 void finish() {
     led_on(LED_BLTIN);
-    display_text("   Congratulations!\n   You've conquered\n      the maze!\n   Well done, hero!");
+    display_text("   Well done, hero!\n   You've conquered\n      the maze!\n   Press any button");
     noTone(BUZZ); 
+    _delay_ms(NEXT_LVL);
 }
 
-int main() {
-    GPIO_init();
-    display_init();
+void start() {
+    display_start();
+    choose_difficulty();
+}
 
-    start();
+void play_level() {
+    player_row = start_row;
+    player_col = start_col;
 
-	while(1) {
-        if (is_finished())
-            continue;
+    while(1) {
+        if (is_finished()) {
+            if (any_button_pressed()) {
+                break;
+            } else {
+                continue;
+            }
+        }
 
         if (button_pressed(BTN_U)) {
             if (wall_up()) {
@@ -163,8 +226,7 @@ int main() {
 
             display_movement();
             tone (BUZZ, tone_freq());
-            if (is_finished()) finish();
-            _delay_ms(100);
+            _delay_ms(DEBOUNCE);
 
         } else if (button_pressed(BTN_D)) {
             if (wall_down()) {
@@ -181,7 +243,7 @@ int main() {
 
             display_movement();
             tone (BUZZ, tone_freq());
-            _delay_ms(100);
+            _delay_ms(DEBOUNCE);
 
         } else if (button_pressed(BTN_L)) {
             if (wall_left()) {
@@ -198,7 +260,7 @@ int main() {
 
             display_movement();
             tone (BUZZ, tone_freq());
-            _delay_ms(100);
+            _delay_ms(DEBOUNCE);
 
         } else if (button_pressed(BTN_R)) {
             if (wall_right()) {
@@ -215,11 +277,21 @@ int main() {
 
             display_movement();
             tone (BUZZ, tone_freq());
-            _delay_ms(100);
+            _delay_ms(DEBOUNCE);
         } else {
             led_off(LED_BLTIN);
-			noTone(BUZZ);  
+            noTone(BUZZ);  
         }
+    }
+}
+
+int main() {
+    GPIO_init();
+    display_init();
+
+	while(1) {
+        start();
+        play_level();
 	}
  
 	return 0;
