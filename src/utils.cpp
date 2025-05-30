@@ -18,7 +18,7 @@ void GPIO_init() {
 	PORTB |= (1 << BTN_R);
 
     init();
-    pinMode(BUZZ, OUTPUT); // TODO: add buzzer with pwm
+    pinMode(BUZZ, OUTPUT);
 }
 
 bool button_pressed(int button) {

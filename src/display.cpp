@@ -21,16 +21,39 @@ void display_text(char *text) {
 }
 
 void display_movement(int player_row, int player_col) {
-    char text[100];
-    sprintf(text, "MOVED!\n %d %d", player_row, player_col);
-    display_text(text);
+    oled_display.clearDisplay();
+    oled_display.setTextSize(1);
+    oled_display.setTextColor(SSD1306_WHITE);
+    oled_display.setCursor(0, 0);
+
+    oled_display.println("     MOVED!");
+    oled_display.println();
+
+    oled_display.print(player_row);
+    oled_display.print(" ");
+    oled_display.print(player_col);
+
+    oled_display.display();
+    delay(100);
 }
 
 void display_wall(int player_row, int player_col) {
-    char text[100];
-    sprintf(text, "       Bonk!\n\n   That's a wall!\n %d %d", player_row, player_col);
-    display_text(text);
+    oled_display.clearDisplay();
+    oled_display.setTextSize(1);
+    oled_display.setTextColor(SSD1306_WHITE);
+    oled_display.setCursor(0, 0);
+
+    oled_display.println("       Bonk!");
+    oled_display.println();
+    oled_display.println("   That's a wall!");
+    // oled_display.print(player_row);
+    // oled_display.print(" ");
+    // oled_display.print(player_col);
+
+    oled_display.display();
+    delay(100);
 }
+
 
 void display_start() {
     display_text("Step inside the maze!\n\n   <move to begin>");

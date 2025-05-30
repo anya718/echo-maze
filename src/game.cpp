@@ -1,47 +1,54 @@
 #include "game.h"
 
+const int rows_cols[DIF_NUM] = {9, 11};
+const int finish_row[DIF_NUM] = {9, 11};
+const int finish_col[DIF_NUM] = {3, 5};
+const int start_row[DIF_NUM] = {1, 1};
+const int start_col[DIF_NUM] = {3, 5};
+const int dist_range[DIF_NUM] = {11, 17};
 
-
-const int rows[DIF_NUM] = {10};
-const int cols[DIF_NUM] = {9};
-const int finish_row[DIF_NUM] = {9};
-const int finish_col[DIF_NUM] = {3};
-const int start_row[DIF_NUM] = {1};
-const int start_col[DIF_NUM] = {3};
 
 const char* difficulties[DIF_NUM] = {
-    "      Very Easy", 
     "         Easy", 
-    "        Medium", 
-    "         Hard", 
-    "      Very Hard", 
-    "       Extreme"
+    "        Medium"
 };
 
 const char* diff_maze[DIF_NUM] = {
-    "    very easy maze", 
     "      easy maze", 
-    "     medium maze", 
-    "      hard maze", 
-    "    very hard maze", 
-    "     extreme maze"
+    "     medium maze"
 };
 
 int player_row;
 int player_col;
-int dist_range = 11;
 int difficulty = 0;
 
-int8_t maze[10][9] = {
-    {-1, -1, -1, -1, -1, -1, -1, -1, -1},
-    {-1,  5,  0,  6,  0,  7,  0,  8, -1},
-    {-1,  0, -1, -1, -1, -1, -1,  0, -1},
-    {-1,  4, -1, 11,  0, 10,  0,  9, -1},
-    {-1,  0, -1, -1, -1, -1, -1, -1, -1},
-    {-1,  3,  0,  2, -1,  3,  0,  4, -1},
-    {-1,  0, -1,  0, -1,  0, -1,  0, -1},
-    {-1,  4, -1,  1,  0,  2, -1,  5, -1},
-    {-1, -1, -1,  0, -1, -1, -1, -1, -1}
+int8_t mazes[DIF_NUM][MAX_ROWS][MAX_ROWS] = {
+    {
+        {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1},
+        {-1,  5,  0,  6,  0,  7,  0,  8, -1, -1, -1},
+        {-1,  0, -1, -1, -1, -1, -1,  0, -1, -1, -1},
+        {-1,  4, -1, 11,  0, 10,  0,  9, -1, -1, -1},
+        {-1,  0, -1, -1, -1, -1, -1, -1, -1, -1, -1},
+        {-1,  3,  0,  2, -1,  3,  0,  4, -1, -1, -1},
+        {-1,  0, -1,  0, -1,  0, -1,  0, -1, -1, -1},
+        {-1,  4, -1,  1,  0,  2, -1,  5, -1, -1, -1},
+        {-1, -1, -1,  0, -1, -1, -1, -1, -1, -1, -1},
+        {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1},
+        {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1}
+    },
+    {
+        {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1},
+        {-1, 11,  0, 12,  0, 13,  0, 14, -1, 17, -1},
+        {-1,  0, -1, -1, -1, -1, -1,  0, -1,  0, -1},
+        {-1, 10,  0,  9, -1,  0,  0, 15,  0, 16, -1},
+        {-1, -1, -1,  0, -1, -1, -1, -1, -1, -1, -1},
+        {-1,  5, -1,  8,  0,  7,  0,  6,  0,  5, -1},
+        {-1,  0, -1, -1, -1, -1, -1,  0, -1,  0, -1},
+        {-1,  4,  0,  3,  0,  2, -1,  7, -1,  4, -1},
+        {-1, -1, -1, -1, -1,  0, -1, -1, -1,  0, -1},
+        {-1,  3,  0,  2,  0,  1,  0,  2,  0,  3, -1},
+        {-1, -1, -1, -1, -1,  0, -1, -1, -1, -1, -1}
+    }
 };
 
 bool is_finished() {
@@ -49,23 +56,24 @@ bool is_finished() {
 }
 
 int tone_freq() {
-    return 100 + (dist_range - maze[player_row][player_col]) * (900 / (dist_range - 1));
+    return 100 + (dist_range[difficulty] - mazes[difficulty][player_row][player_col]) *
+        (900 / (dist_range[difficulty] - 1));
 }
 
 bool wall_up() {
-    return maze[player_row - 1][player_col] == -1;
+    return mazes[difficulty][player_row - 1][player_col] == -1;
 }
 
 bool wall_down() {
-    return maze[player_row + 1][player_col] == -1;
+    return mazes[difficulty][player_row + 1][player_col] == -1;
 }
 
 bool wall_left() {
-    return maze[player_row][player_col - 1] == -1;
+    return mazes[difficulty][player_row][player_col - 1] == -1;
 }
 
 bool wall_right() {
-    return maze[player_row][player_col + 1] == -1;
+    return mazes[difficulty][player_row][player_col + 1] == -1;
 }
 
 void choose_difficulty() {
@@ -81,7 +89,7 @@ void choose_difficulty() {
         }
 
         if (button_pressed(BTN_R)) {
-            if (difficulty != 5)
+            if (difficulty != DIF_NUM - 1)
                 difficulty++;
             _delay_ms(DEBOUNCE);
         }
@@ -90,7 +98,7 @@ void choose_difficulty() {
             break;
     }
     char text[100];
-    sprintf(text, "   Good luck, hero!\n\n    You enter the\n%s\n", diff_maze[difficulty]);
+    sprintf(text, "   Good luck, hero!\n\n   You entered the\n%s\n", diff_maze[difficulty]);
     display_text(text);
     _delay_ms(200);
 }
@@ -133,7 +141,7 @@ void play_level() {
                 continue;
             }
 
-            display_movement(player_row, player_col);
+            // display_movement(player_row, player_col);
             tone (BUZZ, tone_freq());
             _delay_ms(DEBOUNCE);
 
@@ -150,7 +158,7 @@ void play_level() {
                 continue;
             }
 
-            display_movement(player_row, player_col);
+            // display_movement(player_row, player_col);
             tone (BUZZ, tone_freq());
             _delay_ms(DEBOUNCE);
 
@@ -167,7 +175,7 @@ void play_level() {
                 continue;
             }
 
-            display_movement(player_row, player_col);
+            // display_movement(player_row, player_col);
             tone (BUZZ, tone_freq());
             _delay_ms(DEBOUNCE);
 
@@ -184,7 +192,7 @@ void play_level() {
                 continue;
             }
 
-            display_movement(player_row, player_col);
+            // display_movement(player_row, player_col);
             tone (BUZZ, tone_freq());
             _delay_ms(DEBOUNCE);
         } else {

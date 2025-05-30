@@ -4,7 +4,8 @@
 #include "display.h"
 #include "utils.h"
 
-#define DIF_NUM 6
+#define DIF_NUM 2
+#define MAX_ROWS 11
 
 bool is_finished();
 int tone_freq();
